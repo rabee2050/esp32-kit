@@ -5,7 +5,7 @@
 
   tested on:
   1- NodeMCU v3.
-  2- Adafruit feather Huzazah
+  2- Adafruit feather Huzzah ESP8266.
   
 */
 
