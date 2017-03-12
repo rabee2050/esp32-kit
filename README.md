@@ -22,11 +22,14 @@ Applications:
 - Remote control.
 
 Requirements:
-- ESP8266 Board.
+- ESP8266 Board or Module.
 - ESP8266 Sketch.
+- Arduino IDE 
 
 Tested on:
-- Adafruit Feather ESP8266
+- Adafruit Feather Huzzah ESP8266.
+- NodeMCU V3.
+- ESP-01 Module with Arduino Uno, Leonardo and Mega
 
 Check this youtube to see in real world:	
 - http://
