@@ -2,40 +2,42 @@
   Done by TATCO Inc.
   Contacts:
   info@tatco.cc
+
+  tested on:
+  1- NodeMCU v3.
+  2- Adafruit feather Huzazah
+  
 */
 
-//d0 ,d3,d4,d8---nodemcu
-//d16,d0,d2,d15--gpio
-
-
 #include <ESP8266WiFi.h>
-//#include <ESP8266mDNS.h>
 #include <WiFiClient.h>
 #include <Servo.h>
 #include <ArduinoOTA.h>
-#include <YalerESP8266WiFiServer.h>
-//#include <ESP8266HTTPClient.h>
-//#include <ESP8266Ping.h>
-#define lcd_size 3 //this will define number of LCD on the phone app
-#define host_name "node3" //this will be the host name and the AP ssid
+
+//this will be the host name and the Access Point ssid.
+#define host_name "node3"
+//this will define number of LCD display on the phone LCD tab.
+#define lcd_size 3
+
+
 const char* ssid = "Mi rabee";
 const char* password = "1231231234";
+
 char mode_action[54];
 int mode_val[54];
 String lcd[lcd_size];
-String api, channel, notification;
 Servo myServo[53];
-unsigned long last = millis();
-int counter = 1;
-// Create an instance of the server
+
+
+
+boolean  OTA_status = false;
+String http_ok = "HTTP/1.1 200 OK\r\n Content-Type: text/plain \r\n\r\n";
+
 // specify the port to listen on as an argument
 WiFiServer server(80);
-//YalerESP8266WiFiServer server("try.yaler.io", 80, "gsiot-ddrx-wgph");
 
 void setup() {
   Serial.begin(115200);
-  delay(10);
-
   for (byte i = 0; i <= 16; i++) {
     if (i == 1 || i == 3 || i == 6 || i == 7 || i == 8 || i == 9 || i == 10 || i == 11) {
       mode_action[i] = 'x';
@@ -47,7 +49,6 @@ void setup() {
       pinMode(i, OUTPUT);
     }
   }
-
   pinMode(A0, INPUT);
 
   // Connect to WiFi network
@@ -59,65 +60,27 @@ void setup() {
 
   WiFi.begin(ssid, password);
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("Connection Failed! Rebooting...");
+    Serial.print("Connection Failed! to ");
+    Serial.println(ssid);
     //    delay(5000);
     //    ESP.restart();
   } else {
-    Serial.println("");
-    Serial.println("WiFi connected");
+    Serial.println();
+    Serial.println("WiFi connected and the IP address is:");
     Serial.println(WiFi.localIP());
-    Serial.println("mDNS responder started:");
-    Serial.println("http://"host_name".local");
-
+    Arduino_OTA_Start();
   }
-  //  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-  //    Serial.println("Connection Failed! Rebooting...");
-  //    delay(5000);
-  //    ESP.restart();
-  //  }
-  //  while (WiFi.status() != WL_CONNECTED) {
-  //    delay(500);
-  //    Serial.print(".");
-  //  }
-
   server.begin();
-  //  ArduinoOTA.setPort(uint16_t 80);
-  //  ArduinoOTA.setPassword((const char *)"123");
-  ArduinoOTA.setHostname((const char *)host_name);
-  ArduinoOTA.onStart([]() {
-    Serial.println("Start");
-  });
-  ArduinoOTA.onEnd([]() {
-    Serial.println("\nEnd");
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed");
-  });
-  ArduinoOTA.begin();
-
 }
 
-void update_input() {
-  for (byte i = 0; i < sizeof(mode_action); i++) {
-    if (mode_action[i] == 'i') {
-      mode_val[i] = digitalRead(i);
-    }
-  }
-}
+
 
 void loop() {
-  ArduinoOTA.handle();
+  if (OTA_status)ArduinoOTA.handle();
+  
   lcd[0] = "Test 1 LCD";// you can send any data to your mobile phone.
-  lcd[1] = analogRead(0);// you send analog value of A1
-  lcd[2] = "Test 2 LCD";// here you send the battery status if you are using Adafruit BLE
+  lcd[1] = analogRead(0);// you can send analog value of A0
+  lcd[2] = "Test 2 LCD";// you can send any data to your mobile phone.
 
   WiFiClient client = server.available();
   if (client) {
@@ -166,11 +129,7 @@ void digitalCommand(WiFiClient client) {
     value = client.parseInt();
     digitalWrite(pin, value);
     mode_val[pin] = value;
-    String data = "";
-    data += F("HTTP/1.1 200 OK\r\n");
-    data += F("Content-Type: text/plain \r\n\r\n");
-    data += value;
-    client.print(data);
+    client.print(http_ok + value);
   }
 }
 
@@ -181,11 +140,7 @@ void analogCommand(WiFiClient client) {
     value = client.parseInt();
     analogWrite(pin, value);
     mode_val[pin] = value;
-    String data = "";
-    data += F("HTTP/1.1 200 OK\r\n");
-    data += F("Content-Type: text/plain \r\n\r\n");
-    data += value;
-    client.print(data);
+    client.print(http_ok + value);
   }
 
 }
@@ -197,11 +152,7 @@ void servo(WiFiClient client) {
     value = client.parseInt();
     myServo[pin].write(value);
     mode_val[pin] = value;
-    String data = "";
-    data += F("HTTP/1.1 200 OK\r\n");
-    data += F("Content-Type: text/plain \r\n\r\n");
-    data += value;
-    client.print(data);
+    client.print(http_ok + value);
   }
 }
 
@@ -212,8 +163,7 @@ void modeCommand(WiFiClient client) {
 
   if (client.read() == '/') {
     String mode = client.readStringUntil('/');
-    data += F("HTTP/1.1 200 OK\r\n");
-    data += F("Content-Type: text/plain \r\n\r\n");
+    data += http_ok;
     if (mode == "input") {
       mode_action[pin] = 'i';
       pinMode(pin, INPUT);
@@ -271,14 +221,44 @@ void allonoff(WiFiClient client) {
       mode_val[i] = value;
     }
   }
-  String data = "";
-  data += F("HTTP/1.1 200 OK\r\n");
-  data += F("Content-Type: text/plain \r\n\r\n");
-  data += value;
-  client.print(data);
+  client.print(http_ok + value);
 }
 
+void update_input() {
+  for (byte i = 0; i < sizeof(mode_action); i++) {
+    if (mode_action[i] == 'i') {
+      mode_val[i] = digitalRead(i);
+    }
+  }
+}
 
+void Arduino_OTA_Start() {
+  //  ArduinoOTA.setPort(uint16_t 80);
+  //  ArduinoOTA.setPassword((const char *)"123");
+  ArduinoOTA.setHostname((const char *)host_name);
+  ArduinoOTA.onStart([]() {
+    Serial.println("Start");
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+  ArduinoOTA.begin();
+  OTA_status = true;
+  Serial.println("mDNS responder started at:");
+  Serial.println("http://"host_name".local");
+
+}
 
 void allstatus(WiFiClient client) {
   String data_status;
