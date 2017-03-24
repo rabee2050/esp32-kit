@@ -6,7 +6,7 @@
   tested on:
   1- NodeMCU v3.
   2- Adafruit feather Huzzah ESP8266.
-  
+
 */
 
 #include <ESP8266WiFi.h>
@@ -14,11 +14,12 @@
 #include <Servo.h>
 #include <ArduinoOTA.h>
 
-//this will be the host name and the Access Point ssid.
-#define host_name "node3"
+//this will be the host name and the Esp8266 Access Point ssid.
+#define host_name "node1"
 //this will define number of LCD display on the phone LCD tab.
 #define lcd_size 3
-
+// If home wifi access point is available make true else make false to make ESP8266 as access point.
+#define  wifi_available true
 
 const char* ssid = "Mi rabee";
 const char* password = "1231231234";
@@ -29,8 +30,6 @@ String lcd[lcd_size];
 Servo myServo[53];
 
 
-
-boolean  OTA_status = false;
 String http_ok = "HTTP/1.1 200 OK\r\n Content-Type: text/plain \r\n\r\n";
 
 // specify the port to listen on as an argument
@@ -38,46 +37,40 @@ WiFiServer server(80);
 
 void setup() {
   Serial.begin(115200);
-  for (byte i = 0; i <= 16; i++) {
-    if (i == 1 || i == 3 || i == 6 || i == 7 || i == 8 || i == 9 || i == 10 || i == 11) {
-      mode_action[i] = 'x';
-      mode_val[i] = 'x';
-    }
-    else {
-      mode_action[i] = 'o';
-      mode_val[i] = 0;
-      pinMode(i, OUTPUT);
-    }
-  }
-  pinMode(A0, INPUT);
-
-  // Connect to WiFi network
-  WiFi.mode(WIFI_AP_STA);//WIFI_AP, WIFI_STA, WIFI_AP_STA or WIFI_OFF
-  WiFi.softAP(host_name);
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-
-  WiFi.begin(ssid, password);
-  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.print("Connection Failed! to ");
+  if (wifi_available) {
+    WiFi.mode(WIFI_AP_STA);//WIFI_AP, WIFI_STA, WIFI_AP_STA or WIFI_OFF
+    WiFi.softAP(host_name,"1231231234");//(APname, password)
+    Serial.println();
+    Serial.print("Connecting to ");
     Serial.println(ssid);
-    //    delay(5000);
-    //    ESP.restart();
+    WiFi.begin(ssid, password);
+    if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+      Serial.print("Connection Failed! to ");
+      Serial.println(ssid);
+      //    delay(5000);
+      //    ESP.restart();
+    } else {
+      Serial.println();
+      Serial.println("WiFi connected and the IP address is:");
+      Serial.println(WiFi.localIP());
+      Arduino_OTA_Start();
+    }
   } else {
     Serial.println();
-    Serial.println("WiFi connected and the IP address is:");
-    Serial.println(WiFi.localIP());
-    Arduino_OTA_Start();
+    Serial.print(" ESP8266 Access Point only is activated, you can connect to a this on SSID: ");
+    Serial.println(host_name);
+    WiFi.mode(WIFI_AP);//WIFI_AP, WIFI_STA, WIFI_AP_STA or WIFI_OFF
+    WiFi.softAP(host_name,"1231231234");
   }
   server.begin();
+  kit_setup();
 }
 
 
 
 void loop() {
-  if (OTA_status)ArduinoOTA.handle();
-  
+  if (wifi_available)ArduinoOTA.handle();
+
   lcd[0] = "Test 1 LCD";// you can send any data to your mobile phone.
   lcd[1] = analogRead(0);// you can send analog value of A0
   lcd[2] = "Test 2 LCD";// you can send any data to your mobile phone.
@@ -232,6 +225,22 @@ void update_input() {
   }
 }
 
+void kit_setup(){
+  for (byte i = 0; i <= 16; i++) {
+    if (i == 1 || i == 3 || i == 6 || i == 7 || i == 8 || i == 9 || i == 10 || i == 11) {
+      mode_action[i] = 'x';
+      mode_val[i] = 'x';
+    }
+    else {
+      mode_action[i] = 'o';
+      mode_val[i] = 0;
+      pinMode(i, OUTPUT);
+    }
+  }
+  pinMode(A0, INPUT);
+  
+  }
+
 void Arduino_OTA_Start() {
   //  ArduinoOTA.setPort(uint16_t 80);
   //  ArduinoOTA.setPassword((const char *)"123");
@@ -254,7 +263,6 @@ void Arduino_OTA_Start() {
     else if (error == OTA_END_ERROR) Serial.println("End Failed");
   });
   ArduinoOTA.begin();
-  OTA_status = true;
   Serial.println("mDNS responder started at:");
   Serial.println("http://"host_name".local");
 
