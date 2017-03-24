@@ -7,23 +7,24 @@
   Note:
   Make sure the baud rate of the ESP-01 is 9600.
 
-  Connection:
-  Arduino_Rx_Pin  ------->   ESP-01_Tx_Pin
-  Arduino_Tx_Pin  ------->   Bluetooth_Rx_Pin
+  Connection(Arduino Uno):
+  Arduino_rx_pin 10  ------->   ESP-01_Tx_Pin
+  Arduino_tx_pin 11 ------->   ESP-01_Rx_Pin
 
   Tested with ESP-01 module on:
   1- UNO
   2- Mega
   3- Loenardo
+
 */
 
 #include "WiFiEsp.h"
 #include <Servo.h>
-
-#ifndef HAVE_HWSERIAL1
 #include "SoftwareSerial.h"
-SoftwareSerial Serial1(7, 6); //SoftwareSerial Serial1(Arduino_RX, Arduino_TX);
-#endif
+
+#define Arduino_rx_pin 10
+#define Arduino_tx_pin 11
+SoftwareSerial serial(Arduino_rx_pin, Arduino_tx_pin); //SoftwareSerial serial(Arduino_rx_pin, Arduino_tx_pin);
 
 char ssid[] = "Mi rabee";            // your network SSID (name)
 char pass[] = "1231231234";        // your network password
@@ -45,35 +46,48 @@ WiFiEspServer server(80);
 void setup()
 {
   Serial.begin(9600);
-  Serial1.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
-  WiFi.init(&Serial1);
+  serial.begin(9600);
+
+//  while (!Serial) {
+//    ; // wait for serial port to connect. Needed for Arduino Leonardo only
+//  }
+  Serial.println(F("WiFi ESP-01 Initialaization.........\n"));
+
+  WiFi.init(&serial);
 
   if (WiFi.status() == WL_NO_SHIELD) {
-    Serial.println(F("WiFi ESP-01 Module not present"));
+    Serial.println(F("WiFi ESP-01 Module not present, Please check the wiring.\n"));
     while (true);
   }
 
-  while ( status != WL_CONNECTED) {
+  Serial.println(F("WIFI ESP-01 Module is Ok \n"));
+
+  if ( status != WL_CONNECTED) {
     Serial.print(F("Attempting to connect to WPA SSID: "));
     Serial.println(ssid);
+    Serial.println();
     status = WiFi.begin(ssid, pass);
+
   }
 
-  Serial.println(F("You're connected to the network"));
-  printWifiStatus();
-  server.begin();
+  if ( status == WL_CONNECTED) {
+    Serial.println(F("You're connected to the network\n"));
+    printWifiStatus();
+    server.begin();
+  } else {
+    Serial.println(F("Connecting failed to the network, Please check the WIFI SSID & PASSWORD\n"));
+  }
+
   KitSetup();
+  
 }
 
 void loop()
 {
 
   lcd[0] = "Test 1 LCD";// you can send any data to your mobile phone.
-  lcd[1] = analogRead(0);// you send analog value of A1
-  lcd[2] = "Test 2 LCD";// here you send the battery status if you are using Adafruit BLE
+  lcd[1] = analogRead(0);// you can send analog value of A0
+  lcd[2] = "Test 2 LCD";// you can send any data to your mobile phone.
 
 
   WiFiEspClient client = server.available();
@@ -245,7 +259,7 @@ void update_input() {
 void KitSetup() {
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
   for (byte i = 0; i <= 53; i++) {
-    if (i == 0 || i == 1 || i == 18 || i == 19) {
+    if (i == 0 || i == 1 || i == Arduino_tx_pin || i == Arduino_rx_pin) {//tx18,rx19
       mode_action[i] = 'x';
       mode_val[i] = 'x';
     }
@@ -263,7 +277,7 @@ void KitSetup() {
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__) || defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega16U4__)
   for (byte i = 0; i <= 13; i++) {
-    if (i == 0 || i == 1 || i == 6 || i == 7) {
+    if (i == 0 || i == 1 || i == Arduino_rx_pin || i == Arduino_tx_pin) {
       mode_action[i] = 'x';
       mode_val[i] = 'x';
     }
@@ -293,13 +307,13 @@ void printWifiStatus()
 
   // print where to go in the browser
   Serial.println();
-  Serial.print(F("To see this page in action, open a browser to http://"));
+  Serial.print(F("To see the action, open the ESP8266 Kit App then connect to http://"));
   Serial.println(ip);
   Serial.println();
 }
 
 boolean SendCommand(String cmd, String ack) {
-  Serial1.println(cmd); // Send "AT+" command to module
+  serial.println(cmd); // Send "AT+" command to module
   if (!echoFind(ack)) // timed out waiting for ack string
     return true; // ack blank or ack found
 }
@@ -309,8 +323,8 @@ boolean echoFind(String keyword) {
   byte keyword_length = keyword.length();
   long deadline = millis() + TIMEOUT;
   while (millis() < deadline) {
-    if (Serial1.available()) {
-      char ch = Serial1.read();
+    if (serial.available()) {
+      char ch = serial.read();
       Serial.write(ch);
       if (ch == keyword[current_char])
         if (++current_char == keyword_length) {
@@ -324,8 +338,8 @@ boolean echoFind(String keyword) {
 
 void allstatus(WiFiEspClient client) {
   String data_status;
-  data_status +=F("HTTP/1.1 200 OK \r\n");
-  data_status +=F("content-type:application/json \r\n\r\n");
+  data_status += F("HTTP/1.1 200 OK \r\n");
+  data_status += F("content-type:application/json \r\n\r\n");
   data_status += "{";
 
   data_status += "\"mode\":[";
