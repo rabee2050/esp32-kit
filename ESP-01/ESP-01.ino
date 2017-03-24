@@ -1,4 +1,5 @@
 
+
 /*
   Done by TATCO Inc.
   Contacts:
@@ -15,6 +16,17 @@
   1- UNO
   2- Mega
   3- Loenardo
+
+
+  For advanced users only, you can use the serial monitor as terminal, here are some example:
+  AT
+  AT+RST
+  AT+UART_DEF=9600,8,1,0,0
+  AT+CWMODE=3
+  AT+CWJAP=\"Mi rabee\",\"1231231234\"
+  AT+CIFSR
+  AT+CIPMUX=1
+  AT+CIPSERVER=1,80
 
 */
 
