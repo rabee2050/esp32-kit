@@ -5,7 +5,7 @@
   Contacts:
   info@tatco.cc
 
-  Note:
+  Note - Important:
   Make sure the baud rate of the ESP-01 is 9600.
 
   Connection(Arduino Uno):
