@@ -7,3 +7,4 @@ This sketch work with ESP-01 module and tested on :
 # Note - Important
 You have to make sure tha baud rate of the ESP-01 is 9600, Please check google in how to do it
 
+[[https://github.com/rabee2050/ESP8266-Kit-V2/ESP-01/Connection_bb.png|alt=octocat]]
