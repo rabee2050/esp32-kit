@@ -1,6 +1,9 @@
 # ESP8266-Kit
 This sketch work with the app on both iOS and Android : "ESP8266 Kit"
 
+- iOS: https://itunes.apple.com/us/app/esp8266-kit/id1193763934?mt=8
+- Android: https://play.google.com/store/apps/details?id=com.tatco.esp8266
+
 Features:
 - Read & write digital pins
 - Read & write PWM pins 
@@ -29,7 +32,6 @@ Requirements:
 Tested on:
 - Adafruit Feather Huzzah ESP8266.
 - NodeMCU V3.
-- ESP-01 Module with Arduino Uno, Leonardo and Mega
 
 Check this youtube to see in real world:	
 - http://
