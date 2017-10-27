@@ -3,6 +3,12 @@
   Contacts:
   info@tatco.cc
 
+  Release Notes:
+  - V1 Created 14 Jan 2017
+  - V2 Updated 24 Mar 2017
+  - V3 Updated 20 Oct 2017
+
+
   tested on:
   1- NodeMCU v3.
   2- Adafruit feather Huzzah ESP8266.
@@ -14,32 +20,32 @@
 #include <Servo.h>
 #include <ArduinoOTA.h>
 
-//this will be the host name and the Esp8266 Access Point ssid.
-#define host_name "node1"
-//this will define number of LCD display on the phone LCD tab.
-#define lcd_size 3
-// If home wifi access point is available make true else make false to make ESP8266 as access point.
-#define  wifi_available true
+
+#define host_name "node1"//this will be the host name and the Esp8266 Access Point ssid.
+
+#define  wifi_available true// If home wifi access point is available make true else make false to make ESP8266 as access point.
 
 const char* ssid = "Mi rabee";
 const char* password = "1231231234";
 
-char mode_action[54];
-int mode_val[54];
-String lcd[lcd_size];
+#define lcd_size 3 //this will define number of LCD display on the phone LCD tab.
+int refresh_time = 15; //the data will be updated on the app every 15 seconds.
+
+WiFiServer server(80);// specify the port to listen on as an argument
 Servo myServo[53];
 
+char mode_action[54];
+int mode_val[54];
+String mode_feedback;
+String lcd[lcd_size];
 
 String http_ok = "HTTP/1.1 200 OK\r\n Content-Type: text/plain \r\n\r\n";
-
-// specify the port to listen on as an argument
-WiFiServer server(80);
-
+unsigned long last_ip = millis();
 void setup() {
   Serial.begin(115200);
   if (wifi_available) {
     WiFi.mode(WIFI_AP_STA);//WIFI_AP, WIFI_STA, WIFI_AP_STA or WIFI_OFF
-    WiFi.softAP(host_name,"1231231234");//(APname, password)
+    WiFi.softAP(host_name, "1231231234"); //(APname, password)
     Serial.println();
     Serial.print("Connecting to ");
     Serial.println(ssid);
@@ -60,10 +66,10 @@ void setup() {
     Serial.print(" ESP8266 Access Point only is activated, you can connect to a this on SSID: ");
     Serial.println(host_name);
     WiFi.mode(WIFI_AP);//WIFI_AP, WIFI_STA, WIFI_AP_STA or WIFI_OFF
-    WiFi.softAP(host_name,"1231231234");
+    WiFi.softAP(host_name, "1231231234");
   }
   server.begin();
-  kit_setup();
+  boardInit();
 }
 
 
@@ -72,7 +78,7 @@ void loop() {
   if (wifi_available)ArduinoOTA.handle();
 
   lcd[0] = "Test 1 LCD";// you can send any data to your mobile phone.
-  lcd[1] = analogRead(0);// you can send analog value of A0
+    lcd[1] = analogRead(0);// you can send analog value of A0
   lcd[2] = "Test 2 LCD";// you can send any data to your mobile phone.
 
   WiFiClient client = server.available();
@@ -83,11 +89,18 @@ void loop() {
   }
   delay(50);
   update_input();
+  print_wifiStatus();
 }
 
 void process(WiFiClient client) {
-  String _get = client.readStringUntil('/');
+  String getString = client.readStringUntil('/');
+  String arduinoString = client.readStringUntil('/');
   String command = client.readStringUntil('/');
+
+  if (command == "terminal") {
+    terminalCommand(client);
+  }
+
   if (command == "digital") {
     digitalCommand(client);
   }
@@ -108,12 +121,21 @@ void process(WiFiClient client) {
     allonoff(client);
   }
 
+  if (command == "refresh") {
+    refresh(client);
+  }
+
   if (command == "allstatus") {
     allstatus(client);
   }
 
 }
 
+void terminalCommand(WiFiClient client) {//Here you recieve data form app terminal
+  String data = client.readStringUntil('/');
+  Serial.println(data);
+  client.print(http_ok); 
+}
 
 void digitalCommand(WiFiClient client) {
   int pin, value;
@@ -150,54 +172,49 @@ void servo(WiFiClient client) {
 }
 
 void modeCommand(WiFiClient client) {
-  String data = "";
+   mode_feedback = "";
   int pin;
   pin = client.parseInt();
 
   if (client.read() == '/') {
     String mode = client.readStringUntil('/');
-    data += http_ok;
     if (mode == "input") {
       mode_action[pin] = 'i';
       pinMode(pin, INPUT);
-      data += F("Pin D");
-      data += pin;
-      data += F(" configured as INPUT!");
-      client.print(data);
-      return;
+      mode_feedback += F("Pin D");
+      mode_feedback += pin;
+      mode_feedback += F(" configured as INPUT!");
+      allstatus(client);
     }
 
     if (mode == "output") {
       pinMode(pin, OUTPUT);
+      analogWrite(pin, 0);
       mode_action[pin] = 'o';
-      data += F("Pin D");
-      data += pin;
-      data += F(" configured as OUTPUT!");
-      client.print(data);
-
-      return;
+      mode_val[pin] = 0;
+      mode_feedback += F("Pin D");
+      mode_feedback += pin;
+      mode_feedback += F(" configured as OUTPUT!");
+      allstatus(client);
     }
 
     if (mode == "pwm") {
       pinMode(pin, OUTPUT);
       mode_action[pin] = 'p';
-      data += F("Pin D");
-      data += pin;
-      data += F(" configured as PWM!");
-      client.print(data);
-
-      return;
+      mode_val[pin] = 0;
+      mode_feedback += F("Pin D");
+      mode_feedback += pin;
+      mode_feedback += F(" configured as PWM!");
+      allstatus(client);
     }
 
     if (mode == "servo") {
       myServo[pin].attach(pin);
       mode_action[pin] = 's';
-      data += F("Pin D");
-      data += pin;
-      data += F(" configured as SERVO!");
-      client.print(data);
-
-      return;
+      mode_feedback += F("Pin D");
+      mode_feedback += pin;
+      mode_feedback += F(" configured as SERVO!");
+      allstatus(client);
     }
   }
 }
@@ -217,6 +234,14 @@ void allonoff(WiFiClient client) {
   client.print(http_ok + value);
 }
 
+void refresh(WiFiClient client) {
+  int value;
+  value = client.parseInt();
+  refresh_time = value;
+  client.print(http_ok );
+
+}
+
 void update_input() {
   for (byte i = 0; i < sizeof(mode_action); i++) {
     if (mode_action[i] == 'i') {
@@ -225,7 +250,7 @@ void update_input() {
   }
 }
 
-void kit_setup(){
+void boardInit() {
   for (byte i = 0; i <= 16; i++) {
     if (i == 1 || i == 3 || i == 6 || i == 7 || i == 8 || i == 9 || i == 10 || i == 11) {
       mode_action[i] = 'x';
@@ -238,8 +263,8 @@ void kit_setup(){
     }
   }
   pinMode(A0, INPUT);
-  
-  }
+
+}
 
 void Arduino_OTA_Start() {
   //  ArduinoOTA.setPort(uint16_t 80);
@@ -275,7 +300,7 @@ void allstatus(WiFiClient client) {
 
   data_status += "{";
 
-  data_status += "\"mode\":[";
+  data_status += "\"m\":[";
 
   for (byte i = 0; i <= 16; i++) {
     data_status += "\"";
@@ -285,14 +310,14 @@ void allstatus(WiFiClient client) {
   }
   data_status += "],";
 
-  data_status += "\"mode_val\":[";
+  data_status += "\"v\":[";
   for (byte i = 0; i <= 16; i++) {
     data_status += mode_val[i];
     if (i != 16)data_status += ",";
   }
   data_status += "],";
 
-  data_status += "\"analog\":[";
+  data_status += "\"a\":[";
 
   for (byte i = 0; i <= 0; i++) {
     data_status += analogRead(i);
@@ -300,7 +325,7 @@ void allstatus(WiFiClient client) {
   }
   data_status += "],";
 
-  data_status += "\"lcd\":[";
+  data_status += "\"l\":[";
   for (byte i = 0; i <= lcd_size - 1; i++) {
     data_status += "\"";
     data_status += lcd[i];
@@ -309,12 +334,30 @@ void allstatus(WiFiClient client) {
   }
   data_status += "],";
 
-  data_status += "\"boardtype\":\"feather_esp8266\",";
-
-  data_status += "\"boardname\":\"";
-  data_status += host_name;
-  data_status += "\",\"boardstatus\":1";
+  data_status += "\"f\":\""; // f for Feedback.
+  data_status += mode_feedback;
+  data_status += "\",";
+  data_status += "\"t\":\""; //t for refresh Time .
+  data_status += refresh_time;
+  data_status += "\"";
   data_status += "}";
+
   client.print(data_status);
+  mode_feedback="";
+}
+
+void print_wifiStatus() {
+  if (Serial.read() > 0) {
+    if (millis() - last_ip > 2000) {
+      Serial.println();
+      Serial.println("WiFi connected and the IP address is:");
+      Serial.println(WiFi.localIP());
+      Serial.println("mDNS responder started at:");
+      Serial.println(host_name".local");
+      Serial.println();
+    }
+    last_ip = millis();
+  }
+
 }
 
