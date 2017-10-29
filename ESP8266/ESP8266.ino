@@ -25,8 +25,8 @@
 
 #define  wifi_available true// If home wifi access point is available make true else make false to make ESP8266 as access point.
 
-const char* ssid = "Mi rabee";
-const char* password = "1231231234";
+const char* ssid = "Mi rabee";//WIFI SSID Name 
+const char* password = "1231231234";//WIFI Password
 
 #define lcd_size 3 //this will define number of LCD display on the phone LCD tab.
 int refresh_time = 15; //the data will be updated on the app every 15 seconds.
@@ -39,7 +39,7 @@ int mode_val[54];
 String mode_feedback;
 String lcd[lcd_size];
 
-String http_ok = "HTTP/1.1 200 OK\r\n Content-Type: text/plain \r\n\r\n";
+String http_ok = "HTTP/1.1 200 OK\r\n content-type:application/json \r\n\r\n";
 unsigned long last_ip = millis();
 void setup() {
   Serial.begin(115200);
@@ -78,14 +78,14 @@ void loop() {
   if (wifi_available)ArduinoOTA.handle();
 
   lcd[0] = "Test 1 LCD";// you can send any data to your mobile phone.
-    lcd[1] = analogRead(0);// you can send analog value of A0
+  lcd[1] = analogRead(0);// you can send analog value of A0
   lcd[2] = "Test 2 LCD";// you can send any data to your mobile phone.
 
   WiFiClient client = server.available();
   if (client) {
     process(client);
-    client.flush();
     client.stop();
+    client.flush();
   }
   delay(50);
   update_input();
@@ -134,7 +134,7 @@ void process(WiFiClient client) {
 void terminalCommand(WiFiClient client) {//Here you recieve data form app terminal
   String data = client.readStringUntil('/');
   Serial.println(data);
-  client.print(http_ok); 
+  client.print(http_ok);
 }
 
 void digitalCommand(WiFiClient client) {
@@ -172,51 +172,50 @@ void servo(WiFiClient client) {
 }
 
 void modeCommand(WiFiClient client) {
-   mode_feedback = "";
-  int pin;
-  pin = client.parseInt();
+  mode_feedback = "";
+  String  pinString = client.readStringUntil('/');
+  int pin = pinString.toInt();
+  String mode = client.readStringUntil('/');
 
-  if (client.read() == '/') {
-    String mode = client.readStringUntil('/');
-    if (mode == "input") {
-      mode_action[pin] = 'i';
-      pinMode(pin, INPUT);
-      mode_feedback += F("Pin D");
-      mode_feedback += pin;
-      mode_feedback += F(" configured as INPUT!");
-      allstatus(client);
-    }
-
-    if (mode == "output") {
-      pinMode(pin, OUTPUT);
-      analogWrite(pin, 0);
-      mode_action[pin] = 'o';
-      mode_val[pin] = 0;
-      mode_feedback += F("Pin D");
-      mode_feedback += pin;
-      mode_feedback += F(" configured as OUTPUT!");
-      allstatus(client);
-    }
-
-    if (mode == "pwm") {
-      pinMode(pin, OUTPUT);
-      mode_action[pin] = 'p';
-      mode_val[pin] = 0;
-      mode_feedback += F("Pin D");
-      mode_feedback += pin;
-      mode_feedback += F(" configured as PWM!");
-      allstatus(client);
-    }
-
-    if (mode == "servo") {
-      myServo[pin].attach(pin);
-      mode_action[pin] = 's';
-      mode_feedback += F("Pin D");
-      mode_feedback += pin;
-      mode_feedback += F(" configured as SERVO!");
-      allstatus(client);
-    }
+  if (mode == "input") {
+    mode_action[pin] = 'i';
+    pinMode(pin, INPUT);
+    mode_feedback += F("Pin D");
+    mode_feedback += pin;
+    mode_feedback += F(" configured as INPUT!");
+    allstatus(client);
   }
+
+  if (mode == "output") {
+    pinMode(pin, OUTPUT);
+    analogWrite(pin, 0);
+    mode_action[pin] = 'o';
+    mode_val[pin] = 0;
+    mode_feedback += F("Pin D");
+    mode_feedback += pin;
+    mode_feedback += F(" configured as OUTPUT!");
+    allstatus(client);
+  }
+
+  if (mode == "pwm") {
+    pinMode(pin, OUTPUT);
+    mode_action[pin] = 'p';
+    mode_val[pin] = 0;
+    mode_feedback += F("Pin D");
+    mode_feedback += pin;
+    mode_feedback += F(" configured as PWM!");
+    allstatus(client);
+  }
+
+  if (mode == "servo") {
+    myServo[pin].attach(pin);
+    mode_action[pin] = 's';
+    mode_feedback += F("Pin D");
+    mode_feedback += pin;
+    mode_feedback += F(" configured as SERVO!");
+    allstatus(client);
+  }
+
 }
 
 
@@ -254,7 +253,7 @@ void boardInit() {
   for (byte i = 0; i <= 16; i++) {
     if (i == 1 || i == 3 || i == 6 || i == 7 || i == 8 || i == 9 || i == 10 || i == 11) {
       mode_action[i] = 'x';
-      mode_val[i] = 'x';
+      mode_val[i] = 0;
     }
     else {
       mode_action[i] = 'o';
@@ -343,7 +342,7 @@ void allstatus(WiFiClient client) {
   data_status += "}";
 
   client.print(data_status);
-  mode_feedback="";
+  mode_feedback = "";
 }
 
 void print_wifiStatus() {
@@ -360,4 +359,3 @@ void print_wifiStatus() {
   }
 
 }
-
