@@ -34,4 +34,4 @@ Tested on:
 - NodeMCU V3.
 
 Check this youtube to see in real world:	
-- http://
+- https://youtu.be/hYjmv4oRJrM
