@@ -1,5 +1,5 @@
 # ESP8266-Kit
-This sketch work with the app on both iOS and Android : "ESP8266 Kit"
+This sketch work with both apps on the iOS and Android Store: "ESP8266 Kit"
 
 - iOS: https://itunes.apple.com/us/app/esp8266-kit/id1193763934?mt=8
 - Android: https://play.google.com/store/apps/details?id=com.tatco.esp8266
