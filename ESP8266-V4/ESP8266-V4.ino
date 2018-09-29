@@ -7,9 +7,10 @@
   - V1 Created 14 Jan 2017
   - V2 Updated 24 Mar 2017
   - V3 Updated 20 Oct 2017
+  - V4 Updated 01 Oct 2018
 
 
-  tested on:
+  Tested on:
   1- NodeMCU v3.
   2- Adafruit feather Huzzah ESP8266.
 
@@ -21,26 +22,25 @@
 #include <ArduinoOTA.h>
 
 
-#define host_name "node1"//this will be the host name and the Esp8266 Access Point ssid.
-
-#define  wifi_available true// If home wifi access point is available make true else make false to make ESP8266 as access point.
-
-const char* ssid = "Mi rabee";//WIFI SSID Name 
+const char* ssid = "HUAWEI Mi";//WIFI SSID Name
 const char* password = "1231231234";//WIFI Password
-
+String protectionPassword = ""; //This will not allow anyone to add or control your board by knowing the IP address.
 #define lcd_size 3 //this will define number of LCD display on the phone LCD tab.
-int refresh_time = 15; //the data will be updated on the app every 15 seconds.
 
+
+#define host_name "node2"//this will be the host name and the Esp8266 access point SSID.
+#define  wifi_available true // If you dont have access point in your place then make it false to make ESP8266 as access point.
 WiFiServer server(80);// specify the port to listen on as an argument
-Servo myServo[53];
 
 char mode_action[54];
 int mode_val[54];
-String mode_feedback;
+Servo myServo[53];
 String lcd[lcd_size];
 
 String http_ok = "HTTP/1.1 200 OK\r\n content-type:application/json \r\n\r\n";
+String http_ok_text = "HTTP/1.1 200 OK\r\n content-type:text/plain \r\n\r\n";
 unsigned long last_ip = millis();
+
 void setup() {
   Serial.begin(115200);
   if (wifi_available) {
@@ -72,22 +72,20 @@ void setup() {
   boardInit();
 }
 
-
-
 void loop() {
   if (wifi_available)ArduinoOTA.handle();
 
-  lcd[0] = "Test 1 LCD";// you can send any data to your mobile phone.
+  lcd[0] = "Test 1 LCD";// you can send any data to the App inside the LCD tab.
   lcd[1] = analogRead(0);// you can send analog value of A0
-  lcd[2] = "Test 2 LCD";// you can send any data to your mobile phone.
+  lcd[2] = random(1, 100);// you can send any data to the App inside the LCD tab.
 
   WiFiClient client = server.available();
   if (client) {
     process(client);
-    client.stop();
     client.flush();
+    client.stop();
+    delay(50);
   }
-  delay(50);
   update_input();
   print_wifiStatus();
 }
@@ -97,20 +95,20 @@ void process(WiFiClient client) {
   String arduinoString = client.readStringUntil('/');
   String command = client.readStringUntil('/');
 
-  if (command == "terminal") {
-    terminalCommand(client);
-  }
-
   if (command == "digital") {
     digitalCommand(client);
   }
 
-  if (command == "analog") {
-    analogCommand(client);
+  if (command == "pwm") {
+    pwmCommand(client);
   }
 
   if (command == "servo") {
-    servo(client);
+    servoCommand(client);
+  }
+
+  if (command == "terminal") {
+    terminalCommand(client);
   }
 
   if (command == "mode") {
@@ -121,8 +119,8 @@ void process(WiFiClient client) {
     allonoff(client);
   }
 
-  if (command == "refresh") {
-    refresh(client);
+  if (command == "password") {
+    changePassword(client);
   }
 
   if (command == "allstatus") {
@@ -134,7 +132,8 @@ void process(WiFiClient client) {
 void terminalCommand(WiFiClient client) {//Here you recieve data form app terminal
   String data = client.readStringUntil('/');
   Serial.println(data);
-  client.print(http_ok);
+  client.print(http_ok_text);
+  client.print("Ok from Arduino " + random(1, 100));
 }
 
 void digitalCommand(WiFiClient client) {
@@ -148,7 +147,7 @@ void digitalCommand(WiFiClient client) {
   }
 }
 
-void analogCommand(WiFiClient client) {
+void pwmCommand(WiFiClient client) {
   int pin, value;
   pin = client.parseInt();
   if (client.read() == '/') {
@@ -157,10 +156,9 @@ void analogCommand(WiFiClient client) {
     mode_val[pin] = value;
     client.print(http_ok + value);
   }
-
 }
 
-void servo(WiFiClient client) {
+void servoCommand(WiFiClient client) {
   int pin, value;
   pin = client.parseInt();
   if (client.read() == '/') {
@@ -172,47 +170,55 @@ void servo(WiFiClient client) {
 }
 
 void modeCommand(WiFiClient client) {
-  mode_feedback = "";
   String  pinString = client.readStringUntil('/');
   int pin = pinString.toInt();
   String mode = client.readStringUntil('/');
-
-  if (mode == "input") {
-    mode_action[pin] = 'i';
-    pinMode(pin, INPUT);
-    mode_feedback += F("Pin D");
-    mode_feedback += pin;
-    mode_feedback += F(" configured as INPUT!");
-    allstatus(client);
-  }
+  if (mode != "servo") {
+    myServo[pin].detach();
+  };
 
   if (mode == "output") {
     pinMode(pin, OUTPUT);
-    analogWrite(pin, 0);
+    digitalWrite(pin, 0);
     mode_action[pin] = 'o';
     mode_val[pin] = 0;
-    mode_feedback += F("Pin D");
-    mode_feedback += pin;
-    mode_feedback += F(" configured as OUTPUT!");
+    allstatus(client);
+  }
+  if (mode == "push") {
+    mode_action[pin] = 'm';
+    mode_val[pin] = 0;
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, 0);
+    allstatus(client);
+  }
+  if (mode == "schedule") {
+    mode_action[pin] = 'c';
+    mode_val[pin] = 0;
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, 0);
+    allstatus(client);
+  }
+
+  if (mode == "input") {
+    mode_action[pin] = 'i';
+    mode_val[pin] = 0;
+    pinMode(pin, INPUT);
     allstatus(client);
   }
 
   if (mode == "pwm") {
-    pinMode(pin, OUTPUT);
     mode_action[pin] = 'p';
     mode_val[pin] = 0;
-    mode_feedback += F("Pin D");
-    mode_feedback += pin;
-    mode_feedback += F(" configured as PWM!");
+    pinMode(pin, OUTPUT);
+    analogWrite(pin, 0);
     allstatus(client);
   }
 
   if (mode == "servo") {
-    myServo[pin].attach(pin);
     mode_action[pin] = 's';
-    mode_feedback += F("Pin D");
-    mode_feedback += pin;
-    mode_feedback += F(" configured as SERVO!");
+    mode_val[pin] = 0;
+    myServo[pin].attach(pin);
+    myServo[pin].write(0);
     allstatus(client);
   }
 
@@ -223,7 +229,7 @@ void modeCommand(WiFiClient client) {
 void allonoff(WiFiClient client) {
   int pin, value;
   value = client.parseInt();
-
+  Serial.print(value );
   for (byte i = 0; i <= 16; i++) {
     if (mode_action[i] == 'o') {
       digitalWrite(i, value);
@@ -233,12 +239,10 @@ void allonoff(WiFiClient client) {
   client.print(http_ok + value);
 }
 
-void refresh(WiFiClient client) {
-  int value;
-  value = client.parseInt();
-  refresh_time = value;
-  client.print(http_ok );
-
+void changePassword(WiFiClient client) {
+  String data = client.readStringUntil('/');
+  protectionPassword = data;
+  client.print(http_ok_text);
 }
 
 void update_input() {
@@ -289,18 +293,15 @@ void Arduino_OTA_Start() {
   ArduinoOTA.begin();
   Serial.println("mDNS responder started at:");
   Serial.println("http://"host_name".local");
-
 }
 
 void allstatus(WiFiClient client) {
   String data_status;
   data_status += F("HTTP/1.1 200 OK \r\n");
   data_status += F("content-type:application/json \r\n\r\n");
-
   data_status += "{";
 
   data_status += "\"m\":[";
-
   for (byte i = 0; i <= 16; i++) {
     data_status += "\"";
     data_status += mode_action[i];
@@ -317,10 +318,9 @@ void allstatus(WiFiClient client) {
   data_status += "],";
 
   data_status += "\"a\":[";
-
-  for (byte i = 0; i <= 0; i++) {
+  for (byte i = A0; i <= A0; i++) {
     data_status += analogRead(i);
-    if (i != 0)data_status += ",";
+    if (i != A0)data_status += ",";
   }
   data_status += "],";
 
@@ -333,16 +333,11 @@ void allstatus(WiFiClient client) {
   }
   data_status += "],";
 
-  data_status += "\"f\":\""; // f for Feedback.
-  data_status += mode_feedback;
-  data_status += "\",";
-  data_status += "\"t\":\""; //t for refresh Time .
-  data_status += refresh_time;
+  data_status += "\"p\":\""; // f for Feedback.
+  data_status += protectionPassword;
   data_status += "\"";
   data_status += "}";
-
   client.print(data_status);
-  mode_feedback = "";
 }
 
 void print_wifiStatus() {
