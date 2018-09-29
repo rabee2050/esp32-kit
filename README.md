@@ -13,9 +13,10 @@ Features:
 - Charts: for monitoring sensors data.
 - LCD: you can send any data from Arduino to your mobile phone.
 - Terminal: you can send any data from mobile phone to your Arduino.
+- Connect more than one modules at the same time.
 - Super easy user interface.
 - Remember last status of the pins.
-- Change the mode of the pin (Output, PWM, SERVO or Input).
+- Change the mode of the pin (OUTPUT, PWM, SERVO or INPUT).
 - Automatic connect to Arduino.
 - Ability to rename the label of each pin.
 
@@ -29,7 +30,6 @@ Applications:
 - Robots control.
 
 Requirements:
-- ESP8266 Board or Module.
 - ESP8266 Sketch.
 - Arduino IDE 
 
