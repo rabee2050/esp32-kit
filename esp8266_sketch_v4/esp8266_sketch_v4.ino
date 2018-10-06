@@ -7,7 +7,7 @@
   - V1 Created 14 Jan 2017
   - V2 Updated 24 Mar 2017
   - V3 Updated 20 Oct 2017
-  - V4 Updated 01 Oct 2018
+  - V4 Updated 07 Oct 2018
 
 
   Tested on:
@@ -17,77 +17,71 @@
 */
 
 #include <ESP8266WiFi.h>
-#include <WiFiClient.h>
 #include <Servo.h>
-#include <ArduinoOTA.h>
 
-
-const char* ssid = "HUAWEI Mi";//WIFI SSID Name
+const char* ssid = "HUAWEI";//WIFI Network Name.
 const char* password = "1231231234";//WIFI Password
-String protectionPassword = ""; //This will not allow anyone to add or control your board by knowing the IP address.
-#define lcd_size 3 //this will define number of LCD display on the phone LCD tab.
+
+#define lcdSize 3 //this will define number of LCD display on the LCD Dashboard tab.
+String protectionPassword = ""; //This will not allow anyone to add or control your board.
 
 
-#define host_name "node2"//this will be the host name and the Esp8266 access point SSID.
-#define  wifi_available true // If you dont have access point in your place then make it false to make ESP8266 as access point.
-WiFiServer server(80);// specify the port to listen on as an argument
+char pinsMode[54];
+int pinsValue[54];
+Servo servoArray[53];
+String lcd[lcdSize];
 
-char mode_action[54];
-int mode_val[54];
-Servo myServo[53];
-String lcd[lcd_size];
+WiFiServer server(80);// Create server and specify the port.
 
-String http_ok = "HTTP/1.1 200 OK\r\n content-type:application/json \r\n\r\n";
-String http_ok_text = "HTTP/1.1 200 OK\r\n content-type:text/plain \r\n\r\n";
-unsigned long last_ip = millis();
+String httpAppJsonOk = "HTTP/1.1 200 OK\r\n content-type:application/json \r\n\r\n";
+String httpTextPlainOk = "HTTP/1.1 200 OK\r\n content-type:text/plain \r\n\r\n";
+
+unsigned long serialTimer = millis();
 
 void setup() {
   Serial.begin(115200);
-  if (wifi_available) {
-    WiFi.mode(WIFI_AP_STA);//WIFI_AP, WIFI_STA, WIFI_AP_STA or WIFI_OFF
-    WiFi.softAP(host_name, "1231231234"); //(APname, password)
-    Serial.println();
-    Serial.print("Connecting to ");
-    Serial.println(ssid);
-    WiFi.begin(ssid, password);
-    if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-      Serial.print("Connection Failed! to ");
-      Serial.println(ssid);
-      //    delay(5000);
-      //    ESP.restart();
-    } else {
-      Serial.println();
-      Serial.println("WiFi connected and the IP address is:");
-      Serial.println(WiFi.localIP());
-      Arduino_OTA_Start();
-    }
-  } else {
-    Serial.println();
-    Serial.print(" ESP8266 Access Point only is activated, you can connect to a this on SSID: ");
-    Serial.println(host_name);
-    WiFi.mode(WIFI_AP);//WIFI_AP, WIFI_STA, WIFI_AP_STA or WIFI_OFF
-    WiFi.softAP(host_name, "1231231234");
+
+  delay(10);
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  WiFi.mode(WIFI_STA);//WIFI_AP, WIFI_STA, WIFI_AP_STA or WIFI_OFF
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
   }
+  Serial.println("");
+  Serial.println("WiFi connected successfully, the IP address: ");
   server.begin();
+  Serial.println(WiFi.localIP());
   boardInit();
 }
 
 void loop() {
-  if (wifi_available)ArduinoOTA.handle();
 
-  lcd[0] = "Test 1 LCD";// you can send any data to the App inside the LCD tab.
-  lcd[1] = analogRead(0);// you can send analog value of A0
-  lcd[2] = random(1, 100);// you can send any data to the App inside the LCD tab.
+  serialPrintIpAddress();
 
   WiFiClient client = server.available();
-  if (client) {
-    process(client);
-    client.flush();
-    client.stop();
-    delay(50);
+  if (!client) {
+    return;
   }
-  update_input();
-  print_wifiStatus();
+  while (!client.available()) {
+    delay(1);
+  }
+
+  updateInputValues();
+
+  lcd[0] = "Test 1 LCD";// Send any data to the LCD dashboard in the App.
+  lcd[1] = analogRead(A0);// Send analog value of A0 to the LCD dashboard in the App.
+  lcd[2] = random(1, 100);// Send any data to the LCD dashboard in the App.
+
+  client.flush();
+  process(client);
+  client.stop();
+  return;
 }
 
 void process(WiFiClient client) {
@@ -131,9 +125,8 @@ void process(WiFiClient client) {
 
 void terminalCommand(WiFiClient client) {//Here you recieve data form app terminal
   String data = client.readStringUntil('/');
+  client.print(httpAppJsonOk + "Ok from Arduino " + String(random(1, 100)));
   Serial.println(data);
-  client.print(http_ok_text);
-  client.print("Ok from Arduino " + random(1, 100));
 }
 
 void digitalCommand(WiFiClient client) {
@@ -142,8 +135,8 @@ void digitalCommand(WiFiClient client) {
   if (client.read() == '/') {
     value = client.parseInt();
     digitalWrite(pin, value);
-    mode_val[pin] = value;
-    client.print(http_ok + value);
+    pinsValue[pin] = value;
+    client.print(httpAppJsonOk + value);
   }
 }
 
@@ -153,8 +146,8 @@ void pwmCommand(WiFiClient client) {
   if (client.read() == '/') {
     value = client.parseInt();
     analogWrite(pin, value);
-    mode_val[pin] = value;
-    client.print(http_ok + value);
+    pinsValue[pin] = value;
+    client.print(httpAppJsonOk + value);
   }
 }
 
@@ -163,9 +156,9 @@ void servoCommand(WiFiClient client) {
   pin = client.parseInt();
   if (client.read() == '/') {
     value = client.parseInt();
-    myServo[pin].write(value);
-    mode_val[pin] = value;
-    client.print(http_ok + value);
+    servoArray[pin].write(value);
+    pinsValue[pin] = value;
+    client.print(httpAppJsonOk + value);
   }
 }
 
@@ -174,81 +167,135 @@ void modeCommand(WiFiClient client) {
   int pin = pinString.toInt();
   String mode = client.readStringUntil('/');
   if (mode != "servo") {
-    myServo[pin].detach();
+    servoArray[pin].detach();
   };
 
   if (mode == "output") {
     pinMode(pin, OUTPUT);
     digitalWrite(pin, 0);
-    mode_action[pin] = 'o';
-    mode_val[pin] = 0;
+    pinsMode[pin] = 'o';
+    pinsValue[pin] = 0;
     allstatus(client);
   }
   if (mode == "push") {
-    mode_action[pin] = 'm';
-    mode_val[pin] = 0;
+    pinsMode[pin] = 'm';
+    pinsValue[pin] = 0;
     pinMode(pin, OUTPUT);
     digitalWrite(pin, 0);
     allstatus(client);
   }
   if (mode == "schedule") {
-    mode_action[pin] = 'c';
-    mode_val[pin] = 0;
+    pinsMode[pin] = 'c';
+    pinsValue[pin] = 0;
     pinMode(pin, OUTPUT);
     digitalWrite(pin, 0);
     allstatus(client);
   }
 
   if (mode == "input") {
-    mode_action[pin] = 'i';
-    mode_val[pin] = 0;
+    pinsMode[pin] = 'i';
+    pinsValue[pin] = 0;
     pinMode(pin, INPUT);
     allstatus(client);
   }
 
   if (mode == "pwm") {
-    mode_action[pin] = 'p';
-    mode_val[pin] = 0;
+    pinsMode[pin] = 'p';
+    pinsValue[pin] = 0;
     pinMode(pin, OUTPUT);
     analogWrite(pin, 0);
     allstatus(client);
   }
 
   if (mode == "servo") {
-    mode_action[pin] = 's';
-    mode_val[pin] = 0;
-    myServo[pin].attach(pin);
-    myServo[pin].write(0);
+    pinsMode[pin] = 's';
+    pinsValue[pin] = 0;
+    servoArray[pin].attach(pin);
+    servoArray[pin].write(0);
     allstatus(client);
   }
 
 }
 
-
-
 void allonoff(WiFiClient client) {
   int pin, value;
   value = client.parseInt();
-  Serial.print(value );
   for (byte i = 0; i <= 16; i++) {
-    if (mode_action[i] == 'o') {
+    if (pinsMode[i] == 'o') {
       digitalWrite(i, value);
-      mode_val[i] = value;
+      pinsValue[i] = value;
     }
   }
-  client.print(http_ok + value);
+  client.print(httpTextPlainOk + value);
 }
 
 void changePassword(WiFiClient client) {
   String data = client.readStringUntil('/');
   protectionPassword = data;
-  client.print(http_ok_text);
+  client.print(httpAppJsonOk);
 }
 
-void update_input() {
-  for (byte i = 0; i < sizeof(mode_action); i++) {
-    if (mode_action[i] == 'i') {
-      mode_val[i] = digitalRead(i);
+void allstatus(WiFiClient client) {
+  String dataResponse;
+  dataResponse += F("HTTP/1.1 200 OK \r\n");
+  dataResponse += F("content-type:application/json \r\n\r\n");
+  dataResponse += "{";
+
+  dataResponse += "\"m\":[";//m for mode
+  for (byte i = 0; i <= 16; i++) {
+    dataResponse += "\"";
+    dataResponse += pinsMode[i];
+    dataResponse += "\"";
+    if (i != 16)dataResponse += ",";
+  }
+  dataResponse += "],";
+
+  dataResponse += "\"v\":[";//v for value
+  for (byte i = 0; i <= 16; i++) {
+    dataResponse += pinsValue[i];
+    if (i != 16)dataResponse += ",";
+  }
+  dataResponse += "],";
+
+  dataResponse += "\"a\":[";//a for analog value
+  for (byte i = A0; i <= A0; i++) {
+    dataResponse += analogRead(i);
+    if (i != A0)dataResponse += ",";
+  }
+  dataResponse += "],";
+
+  dataResponse += "\"l\":[";//l for LCD value
+  for (byte i = 0; i <= lcdSize - 1; i++) {
+    dataResponse += "\"";
+    dataResponse += lcd[i];
+    dataResponse += "\"";
+    if (i != lcdSize - 1)dataResponse += ",";
+  }
+  dataResponse += "],";
+
+  dataResponse += "\"p\":\""; // p for Password.
+  dataResponse += protectionPassword;
+  dataResponse += "\"";
+  dataResponse += "}";
+  client.print(dataResponse);
+}
+
+void serialPrintIpAddress() {
+  if (Serial.read() > 0) {
+    if (millis() - serialTimer > 2000) {
+      Serial.println();
+      Serial.println("IP address is:");
+      Serial.println(WiFi.localIP());
+    }
+    serialTimer = millis();
+  }
+
+}
+
+void updateInputValues() {
+  for (byte i = 0; i < sizeof(pinsMode); i++) {
+    if (pinsMode[i] == 'i') {
+      pinsValue[i] = digitalRead(i);
     }
   }
 }
@@ -256,101 +303,14 @@ void update_input() {
 void boardInit() {
   for (byte i = 0; i <= 16; i++) {
     if (i == 1 || i == 3 || i == 6 || i == 7 || i == 8 || i == 9 || i == 10 || i == 11) {
-      mode_action[i] = 'x';
-      mode_val[i] = 0;
+      pinsMode[i] = 'x';
+      pinsValue[i] = 0;
     }
     else {
-      mode_action[i] = 'o';
-      mode_val[i] = 0;
+      pinsMode[i] = 'o';
+      pinsValue[i] = 0;
       pinMode(i, OUTPUT);
     }
   }
   pinMode(A0, INPUT);
-
-}
-
-void Arduino_OTA_Start() {
-  //  ArduinoOTA.setPort(uint16_t 80);
-  //  ArduinoOTA.setPassword((const char *)"123");
-  ArduinoOTA.setHostname((const char *)host_name);
-  ArduinoOTA.onStart([]() {
-    Serial.println("Start");
-  });
-  ArduinoOTA.onEnd([]() {
-    Serial.println("\nEnd");
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed");
-  });
-  ArduinoOTA.begin();
-  Serial.println("mDNS responder started at:");
-  Serial.println("http://"host_name".local");
-}
-
-void allstatus(WiFiClient client) {
-  String data_status;
-  data_status += F("HTTP/1.1 200 OK \r\n");
-  data_status += F("content-type:application/json \r\n\r\n");
-  data_status += "{";
-
-  data_status += "\"m\":[";
-  for (byte i = 0; i <= 16; i++) {
-    data_status += "\"";
-    data_status += mode_action[i];
-    data_status += "\"";
-    if (i != 16)data_status += ",";
-  }
-  data_status += "],";
-
-  data_status += "\"v\":[";
-  for (byte i = 0; i <= 16; i++) {
-    data_status += mode_val[i];
-    if (i != 16)data_status += ",";
-  }
-  data_status += "],";
-
-  data_status += "\"a\":[";
-  for (byte i = A0; i <= A0; i++) {
-    data_status += analogRead(i);
-    if (i != A0)data_status += ",";
-  }
-  data_status += "],";
-
-  data_status += "\"l\":[";
-  for (byte i = 0; i <= lcd_size - 1; i++) {
-    data_status += "\"";
-    data_status += lcd[i];
-    data_status += "\"";
-    if (i != lcd_size - 1)data_status += ",";
-  }
-  data_status += "],";
-
-  data_status += "\"p\":\""; // f for Feedback.
-  data_status += protectionPassword;
-  data_status += "\"";
-  data_status += "}";
-  client.print(data_status);
-}
-
-void print_wifiStatus() {
-  if (Serial.read() > 0) {
-    if (millis() - last_ip > 2000) {
-      Serial.println();
-      Serial.println("WiFi connected and the IP address is:");
-      Serial.println(WiFi.localIP());
-      Serial.println("mDNS responder started at:");
-      Serial.println(host_name".local");
-      Serial.println();
-    }
-    last_ip = millis();
-  }
-
 }
