@@ -19,7 +19,7 @@
 #include <ESP8266WiFi.h>
 #include <Servo.h>
 
-const char* ssid = "HUAWEI Mi";//WIFI Network Name.
+const char* ssid = "HUAWEI";//WIFI Network Name.
 const char* password = "1231231234";//WIFI Password
 
 #define lcdSize 3 //this will define number of LCD display on the LCD Dashboard tab.
