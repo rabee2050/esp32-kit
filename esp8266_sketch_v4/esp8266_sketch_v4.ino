@@ -80,7 +80,6 @@ void loop() {
 
   client.flush();
   process(client);
-  client.stop();
   return;
 }
 
