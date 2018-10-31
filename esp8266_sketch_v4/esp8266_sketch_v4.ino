@@ -47,6 +47,7 @@ void setup() {
   Serial.println(ssid);
 
   WiFi.mode(WIFI_STA);//WIFI_AP, WIFI_STA, WIFI_AP_STA or WIFI_OFF
+  WiFi.softAP("NodeMCU", "123456789"); //(APname, password)
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
