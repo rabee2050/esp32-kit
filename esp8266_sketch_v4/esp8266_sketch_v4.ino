@@ -19,7 +19,7 @@
 #include <ESP8266WiFi.h>
 #include <Servo.h>
 
-const char* ssid = "HUAWEI";//WIFI Network Name.
+const char* ssid = "WiFiNetworkName";//WIFI Network Name.
 const char* password = "1231231234";//WIFI Password
 
 #define lcdSize 3 //this will define number of LCD display on the LCD Dashboard tab.
@@ -37,27 +37,28 @@ String httpAppJsonOk = "HTTP/1.1 200 OK\r\n content-type:application/json \r\n\r
 String httpTextPlainOk = "HTTP/1.1 200 OK\r\n content-type:text/plain \r\n\r\n";
 
 unsigned long serialTimer = millis();
+boolean connectionStatus;
 
 void setup() {
-  Serial.begin(115200);
 
+  Serial.begin(115200);
   delay(10);
   Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-
-  WiFi.mode(WIFI_STA);//WIFI_AP, WIFI_STA, WIFI_AP_STA or WIFI_OFF
-//   WiFi.softAP("NodeMCU", "123456789"); //(APname, password)
+  WiFi.mode(WIFI_AP_STA);//WIFI_AP, WIFI_STA, WIFI_AP_STA or WIFI_OFF
+  WiFi.softAP("ESP8266-WIFI-AP", "123456789"); //(APname, password)
   WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
   Serial.println("");
-  Serial.println("WiFi connected successfully, the IP address: ");
+  Serial.printf("Connecting to %s........", ssid);
+  Serial.println("");
+
+  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    notConnectedToWifiNetwork();
+    connectionStatus = false;
+  } else {
+    connectedToWifiNetwork();
+    connectionStatus = true;
+  }
   server.begin();
-  Serial.println(WiFi.localIP());
   boardInit();
 }
 
@@ -283,9 +284,11 @@ void allstatus(WiFiClient client) {
 void serialPrintIpAddress() {
   if (Serial.read() > 0) {
     if (millis() - serialTimer > 2000) {
-      Serial.println();
-      Serial.println("IP address is:");
-      Serial.println(WiFi.localIP());
+      if (connectionStatus == true) {
+        connectedToWifiNetwork();
+      } else {
+        notConnectedToWifiNetwork();
+      }
     }
     serialTimer = millis();
   }
@@ -313,4 +316,23 @@ void boardInit() {
     }
   }
   pinMode(A0, INPUT);
+}
+
+void connectedToWifiNetwork() {
+  Serial.println("");
+  Serial.println("WiFi is connected, the IP address: ");
+  Serial.println(WiFi.localIP());
+  }
+
+void notConnectedToWifiNetwork() {
+  WiFi.mode(WIFI_AP);//WIFI_AP, WIFI_STA, WIFI_AP_STA or WIFI_OFF
+  WiFi.softAP("ESP8266-WIFI-AP", "123456789"); //(APname, password)
+  Serial.println("");
+  Serial.printf("WiFi connection failed to the network '%s', but you can still connect to board as it is Access Point:", ssid);
+  Serial.println("");
+  Serial.println("1- Go to your mobile WiFi settings and connect to a network Called: 'ESP8266-WIFI-AP'.");
+  Serial.println("2- The default WiFi password is: '123456789'.");
+  Serial.print("3- Open the ESP8266 Kit app and insert this IP Address: ");
+  Serial.println("192.168.1.4");
+  Serial.println("4- Press the check button then you will be able to control your board!.");
 }
