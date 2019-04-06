@@ -4,8 +4,8 @@
   Contact: info@tatco.cc
   Done By: TATCO Inc.
   github : https://github.com/rabee2050/esp8266-kit
-  iOS    : 
-  Android: 
+  iOS    : https://itunes.apple.com/us/app/esp8266-kit/id1193763934?mt=8
+  Android: https://play.google.com/store/apps/details?id=com.tatco.esp8266 
 
   Release Notes:
   - V1 Created 14 Jan 2017
