@@ -1,6 +1,6 @@
 /*
   Title  : Arduino ESP8266 Kit
-  version: V4.1
+  version: V4.2
   Contact: info@tatco.cc
   Done By: TATCO Inc.
   github : https://github.com/rabee2050/esp8266-kit
@@ -12,7 +12,7 @@
   - V2 Updated 24 Mar 2017
   - V3 Updated 20 Oct 2017
   - V4 Updated 07 Oct 2018
-  - V4.1 Updated 06 Apr 2019 / Minor Changes
+  - V4.2 Updated 06 Apr 2019 / Minor Changes
 
 
   Tested on:
