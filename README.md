@@ -1,11 +1,11 @@
-# ESP8266-Kit
-This sketch work with both apps on the iOS and Android Store: "ESP8266 Kit"
+# ESP32-Kit
+This sketch work with both apps on the iOS and Android Store: "ESP32 Kit"
 
-- iOS: https://itunes.apple.com/us/app/esp8266-kit/id1193763934?mt=8
-- Android: https://play.google.com/store/apps/details?id=com.tatco.esp8266
+- iOS: 
+- Android: 
 
 Features:
-
+- Control the board by Bluetooth or WIFI.
 - Read & write digital pins. 
 - Read & write PWM pins.
 - Control SERVO motors.
@@ -30,12 +30,11 @@ Applications:
 - Robots control.
 
 Requirements:
-- ESP8266 Sketch.
+- ESP32 Sketch.
 - Arduino IDE 
 
 Tested on:
-- Adafruit Feather Huzzah ESP8266.
-- NodeMCU V3.
+- ESP32 Dev Module.
 
 Check this youtube to see in real world:	
-- https://youtu.be/hYjmv4oRJrM
+- v
