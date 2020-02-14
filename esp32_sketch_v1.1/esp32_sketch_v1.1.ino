@@ -1,6 +1,6 @@
 /*
   Title  : ESP32 Kit
-  version: V1.0
+  version: V1.1
   Contact: info@tatco.cc
   Done By: TATCO Inc.
   github : https://github.com/rabee2050/esp32-kit
@@ -11,7 +11,7 @@
   Android:
 
   Release Notes:
-  - V1 Created 29 Dec 2019
+  - V1.1 Created 29 Dec 2019
 
   
   Installation instructions using Arduino IDE Boards Manager:
@@ -50,7 +50,7 @@ BLECharacteristic *pCharacteristic;
 
 
 
-String appBuildVersion = "1.0";
+String appBuildVersion = "1.1";
 String boardType = "esp32";
 String protectionPassword = ""; //This will prevent people to add or control your board.
 int refreshTime = 3; //the data will be updated on the app every 3 seconds.
