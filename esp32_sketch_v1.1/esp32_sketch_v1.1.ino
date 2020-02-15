@@ -7,8 +7,8 @@
   Youtube: http://tatco.cc
 
   Apps:
-  iOS    :
-  Android:
+  iOS    : https://apps.apple.com/us/app/esp32-kit/id1498601142?ls=1
+  Android: Coming Soon.
 
   Release Notes:
   - V1.1 Created 29 Dec 2019
