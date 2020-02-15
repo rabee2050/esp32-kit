@@ -1,8 +1,8 @@
 # ESP32-Kit
 This sketch work with both apps on the iOS and Android Store: "ESP32 Kit"
 
-- iOS: 
-- Android: 
+- iOS: https://apps.apple.com/us/app/esp32-kit/id1498601142?ls=1
+- Android: Coming soon
 
 Features:
 - Control the board by Bluetooth or WIFI.
@@ -36,5 +36,5 @@ Requirements:
 Tested on:
 - ESP32 Dev Module.
 
-Check this youtube to see in real world:	
-- v
+Check our channel on Youtube:
+- tatco.cc
