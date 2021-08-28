@@ -16,7 +16,7 @@
   
   Installation instructions using Arduino IDE Boards Manager:
   1- Go to this link and follow the instructions:
-  https://github.com/espressif/arduino-esp32/blob/master/docs/arduino-ide/boards_manager.md
+  https://github.com/espressif/arduino-esp32/blob/master/README.md
   2- Go to Tools/Board/Boards Manager
   3- Search for: ESP32
   4- Install the Package: esp32 by Espress Systems version 1.0.4
